@@ -1,92 +1,102 @@
-# main.py
-import threading
-import time
-# Local imports from our modules
-from audio.vad import VADListener, load_silero_vad
-from audio.stt import SileroSTT
-from audio.tts import SileroTTS
-from llm.ollama import OllamaClient
-from face_animation.face import FaceAnimator
+"""Entrypoint for the robot face and dialogue loop."""
 
-def main():
-    # 1) Setup face animator with projector settings
-    face_animator = FaceAnimator(
-        face_image_path="assets/Face2.png",
-        mouth_image_path="assets/Mouth2.png",
-        window_size=(1920, 1080),  # Projector resolution
-        min_scale=1.0,
-        max_scale=2.5
-    )
+from __future__ import annotations
+
+import threading
+from typing import Optional
+
+from audio.stt import FasterWhisperSTT
+from audio.tts import EspeakTTS
+from audio.vad import VADConfig, VADListener
+from face_animation.face import FaceAnimator, FaceSettings
+from llm.ollama import OllamaClient
+
+
+def _detect_whisper_device() -> str:
+    try:
+        import ctranslate2  # type: ignore
+
+        if ctranslate2.get_cuda_device_count() > 0:  # type: ignore[attr-defined]
+            return "cuda"
+    except Exception:
+        pass
+    return "cpu"
+
+
+def main() -> None:
+    face_settings = FaceSettings(window_size=(1920, 1080))
+    face_animator = FaceAnimator(settings=face_settings)
     face_thread = threading.Thread(target=face_animator.run, daemon=True)
     face_thread.start()
-    
-    # 2) Load VAD
-    print("-> Loading Silero VAD model...")
-    vad_model = load_silero_vad()
-    
-    # 3) STT
-    stt_model = SileroSTT(device="cpu")
-    
-    # 4) Ollama
-    ollama_client = OllamaClient(url="http://localhost:11434/api/chat",
-                                 model="llama3.2:1b",
-                                 stream=True)
-    
-    # 5) TTS
-    tts_model = SileroTTS(device="cpu", sample_rate=24000)
-    
-    # Callback when user finishes speaking
-    def on_speech_detected(raw_bytes):
-        # 1) Disable VAD while TTS is active to avoid picking up TTS output
-        # Although TTS is playing on speakers, it might feed back into the mic
-        # so let's disable temporarily
+
+    vad_config = VADConfig(sample_rate=16000, frame_duration_ms=30, padding_duration_ms=360, aggressiveness=2)
+
+    stt_device = _detect_whisper_device()
+    stt_model = FasterWhisperSTT(model_size_or_path="tiny.en", device=stt_device, compute_type="int8")
+
+    ollama_client = OllamaClient(
+        url="http://localhost:11434/api/chat",
+        model="gemma3:270m",
+        stream=True,
+        system_prompt="You are a cheerful robotic companion speaking concisely.",
+    )
+
+    tts_model = EspeakTTS(voice="en-us", rate=185, pitch=55)
+
+    vad_listener: Optional[VADListener] = None
+
+    def on_speech_detected(raw_bytes: bytes) -> None:
+        nonlocal vad_listener
+        if vad_listener is None:
+            return
+
         vad_listener.disable_vad()
-        
-        # 2) STT
-        recognized_text = stt_model.run_stt(raw_bytes, sample_rate=16000)
+
+        try:
+            recognized_text = stt_model.run_stt(raw_bytes, sample_rate=vad_listener.sample_rate)
+        except Exception as exc:  # pragma: no cover - defensive logging only
+            print("STT error:", exc)
+            recognized_text = ""
+
         print("-> User said:", recognized_text)
-        
-        # 3) If empty, re-enable VAD and return
+
         if not recognized_text.strip():
+            face_animator.update_amplitude(0.0)
             vad_listener.enable_vad()
             return
-        
-        # 4) Query LLM
+
         llm_response = ollama_client.query(recognized_text)
         if not llm_response.strip():
+            face_animator.update_amplitude(0.0)
             vad_listener.enable_vad()
             return
-        
-        # 5) Synthesize TTS
-        audio_data = tts_model.synthesize(llm_response)
-        
-        # 6) Play TTS, providing amplitude updates to face_animator
-        def amplitude_callback(ampl):
-            face_animator.update_amplitude(ampl)
-        
+
+        try:
+            audio_data = tts_model.synthesize(llm_response)
+        except Exception as exc:  # pragma: no cover - defensive logging only
+            print("TTS error:", exc)
+            face_animator.update_amplitude(0.0)
+            vad_listener.enable_vad()
+            return
+
+        def amplitude_callback(level: float) -> None:
+            face_animator.update_amplitude(level)
+
         tts_model.play_audio_with_amplitude(audio_data, amplitude_callback)
-        
-        # Once TTS finished, re-enable VAD
+        face_animator.update_amplitude(0.0)
         vad_listener.enable_vad()
-    
-    # Create VADListener
-    vad_listener = VADListener(
-        sample_rate=16000,
-        chunk_sec=0.5,
-        speech_pause_sec=1.0,
-        device_index=None,      # adjust if needed
-        vad_device=vad_model,
-        on_speech_callback=on_speech_detected
-    )
-    
-    # 6) Start VAD in the main thread
+
+    vad_listener = VADListener(config=vad_config, device_index=None, on_speech_callback=on_speech_detected)
+
     print("-> Starting the VAD listener...")
     try:
-        vad_listener.start()  # Blocks indefinitely
+        vad_listener.start()
     except KeyboardInterrupt:
         print("Shutting down...")
+    finally:
         vad_listener.stop()
         face_animator.stop()
+
 
 if __name__ == "__main__":
     main()
