@@ -1,6 +1,6 @@
 """Entrypoint for the robot face and dialogue loop."""
 
-from __future-annotations
+from __future__ import annotations
 
 import threading
 from typing import Optional
@@ -26,7 +26,7 @@ def _detect_whisper_device() -> str:
 
 def main() -> None:
     """Initializes all components and starts the main interaction loop."""
-    face_settings = FaceSettings(window_size=(1920, 1080), rotation_degrees=-90)
+    face_settings = FaceSettings(window_size=(1920, 1080), rotation_degrees=180)
     face_animator = FaceAnimator(settings=face_settings)
     face_thread = threading.Thread(target=face_animator.run, daemon=True)
     face_thread.start()
