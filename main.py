@@ -1,6 +1,6 @@
 """Entrypoint for the robot face and dialogue loop."""
 
-from __future__ import annotations
+from __future-annotations
 
 import threading
 from typing import Optional
@@ -13,6 +13,7 @@ from llm.ollama import OllamaClient
 
 
 def _detect_whisper_device() -> str:
+    """Detects the best available device for ctranslate2 (CUDA or CPU)."""
     try:
         import ctranslate2  # type: ignore
 
@@ -24,6 +25,7 @@ def _detect_whisper_device() -> str:
 
 
 def main() -> None:
+    """Initializes all components and starts the main interaction loop."""
     face_settings = FaceSettings(window_size=(1920, 1080), rotation_degrees=-90)
     face_animator = FaceAnimator(settings=face_settings)
     face_thread = threading.Thread(target=face_animator.run, daemon=True)
@@ -47,6 +49,7 @@ def main() -> None:
     last_bot_response: str = ""
 
     def on_speech_detected(raw_bytes: bytes) -> None:
+        """Callback function triggered when VAD detects speech."""
         nonlocal vad_listener, last_bot_response
         if vad_listener is None:
             return
@@ -66,6 +69,7 @@ def main() -> None:
             vad_listener.enable_vad()
             return
 
+        # Simple echo cancellation: ignore if user input matches the last bot response
         normalized_user = recognized_text.strip().lower()
         normalized_bot = last_bot_response.strip().lower()
         if normalized_user and normalized_bot:

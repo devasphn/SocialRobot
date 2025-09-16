@@ -15,6 +15,7 @@ import pygame
 
 @dataclass
 class FaceSettings:
+    """Settings for the animated face display."""
     window_size: Tuple[int, int] = (1280, 720)
     display_size: Optional[Tuple[int, int]] = None
     rotation_degrees: int = 0
