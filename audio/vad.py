@@ -2,6 +2,7 @@
 
 import collections
 import threading
+import time
 from dataclasses import dataclass
 from typing import Callable, Deque, Optional, Tuple
 
@@ -51,6 +52,8 @@ class VADListener:
         self._stop_flag = threading.Event()
         self._vad_enabled = threading.Event()
         self._vad_enabled.set()
+        self._frames_to_skip = 0
+        self._reset_buffers = False
 
     def start(self) -> None:
         """Start capturing audio and running VAD (blocking)."""
@@ -70,13 +73,31 @@ class VADListener:
 
         print("-> VAD listening loop started (WebRTC).")
 
-        while not self._stop_flag.is_set():
-            frame = self._stream.read(self.frame_size, exception_on_overflow=False)
+        frame_interval = self.frame_duration_ms / 1000.0
 
+        while not self._stop_flag.is_set():
             if not self._vad_enabled.is_set():
+                if self._stream is not None and self._stream.is_active():
+                    self._stream.stop_stream()
                 ring_buffer.clear()
                 voiced_frames.clear()
                 triggered = False
+                time.sleep(frame_interval)
+                continue
+
+            if self._stream is not None and not self._stream.is_active():
+                self._stream.start_stream()
+
+            frame = self._stream.read(self.frame_size, exception_on_overflow=False)
+
+            if self._reset_buffers:
+                ring_buffer.clear()
+                voiced_frames.clear()
+                triggered = False
+                self._reset_buffers = False
+
+            if self._frames_to_skip > 0:
+                self._frames_to_skip -= 1
                 continue
 
             is_speech = self._vad.is_speech(frame, self.sample_rate)
@@ -110,9 +131,16 @@ class VADListener:
         self._stop_flag.set()
 
     def enable_vad(self) -> None:
+        skip_frames = max(1, int(0.4 / (self.frame_duration_ms / 1000.0)))
+        self._frames_to_skip = max(skip_frames, self.padding_frames)
+        self._reset_buffers = True
+        if self._stream is not None and not self._stream.is_active():
+            self._stream.start_stream()
         self._vad_enabled.set()
 
     def disable_vad(self) -> None:
+        self._frames_to_skip = 0
+        self._reset_buffers = True
         self._vad_enabled.clear()
 
 

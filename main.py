@@ -1,6 +1,6 @@
 """Entrypoint for the robot face and dialogue loop."""
 
-from __future__ import annotations
+from __future-annotations
 
 import threading
 from typing import Optional
@@ -13,6 +13,7 @@ from llm.ollama import OllamaClient
 
 
 def _detect_whisper_device() -> str:
+    """Detects the best available device for ctranslate2 (CUDA or CPU)."""
     try:
         import ctranslate2  # type: ignore
 
@@ -24,7 +25,8 @@ def _detect_whisper_device() -> str:
 
 
 def main() -> None:
-    face_settings = FaceSettings(window_size=(1920, 1080))
+    """Initializes all components and starts the main interaction loop."""
+    face_settings = FaceSettings(window_size=(1920, 1080), rotation_degrees=-90)
     face_animator = FaceAnimator(settings=face_settings)
     face_thread = threading.Thread(target=face_animator.run, daemon=True)
     face_thread.start()
@@ -44,9 +46,11 @@ def main() -> None:
     tts_model = EspeakTTS(voice="en-us", rate=185, pitch=55)
 
     vad_listener: Optional[VADListener] = None
+    last_bot_response: str = ""
 
     def on_speech_detected(raw_bytes: bytes) -> None:
-        nonlocal vad_listener
+        """Callback function triggered when VAD detects speech."""
+        nonlocal vad_listener, last_bot_response
         if vad_listener is None:
             return
 
@@ -65,6 +69,20 @@ def main() -> None:
             vad_listener.enable_vad()
             return
 
+        # Simple echo cancellation: ignore if user input matches the last bot response
+        normalized_user = recognized_text.strip().lower()
+        normalized_bot = last_bot_response.strip().lower()
+        if normalized_user and normalized_bot:
+            if (
+                normalized_user == normalized_bot
+                or normalized_user in normalized_bot
+                or normalized_bot in normalized_user
+            ):
+                print("-> Ignoring self-echo from recent response.")
+                face_animator.update_amplitude(0.0)
+                vad_listener.enable_vad()
+                return
+
         llm_response = ollama_client.query(recognized_text)
         if not llm_response.strip():
             face_animator.update_amplitude(0.0)
@@ -78,6 +96,8 @@ def main() -> None:
             face_animator.update_amplitude(0.0)
             vad_listener.enable_vad()
             return
+
+        last_bot_response = llm_response
 
         def amplitude_callback(level: float) -> None:
             face_animator.update_amplitude(level)
