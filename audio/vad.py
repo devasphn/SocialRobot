@@ -1,108 +1,147 @@
-# audio/vad.py
-import pyaudio
-import numpy as np
+"""Lightweight voice activity detection utilities."""
+
+import collections
+import threading
 import time
-import wave
-from silero_vad import load_silero_vad, get_speech_timestamps
+from dataclasses import dataclass
+from typing import Callable, Deque, Optional, Tuple
+
+import pyaudio
+import webrtcvad
+
+
+Frame = Tuple[bytes, bool]
+
+
+@dataclass
+class VADConfig:
+    """Parameters that control the WebRTC VAD behaviour."""
+
+    sample_rate: int = 16000
+    frame_duration_ms: int = 30
+    padding_duration_ms: int = 300
+    activation_ratio: float = 0.6
+    deactivation_ratio: float = 0.85
+    aggressiveness: int = 2  # 0-3, larger is more aggressive
+
 
 class VADListener:
-    """
-    Continuously captures short audio chunks, uses Silero VAD
-    to detect speech segments, and calls a callback with
-    the final speech audio once user stops talking.
-    """
-    def __init__(self,
-                 sample_rate=16000,
-                 chunk_sec=0.5,
-                 speech_pause_sec=1.0,
-                 device_index=None,
-                 vad_device=None,
-                 on_speech_callback=None):
-        """
-        sample_rate: STT sample rate (e.g. 16000)
-        chunk_sec: length of each chunk in seconds (for VAD)
-        speech_pause_sec: how long of silence after we last
-                          detected speech to consider the utterance done
-        device_index: optional PyAudio device index
-        vad_device: loaded Silero VAD model
-        on_speech_callback: function(audio_bytes) -> None
-        """
-        self.sample_rate = sample_rate
-        self.chunk_sec = chunk_sec
-        self.chunk_size = int(sample_rate * chunk_sec)
-        self.speech_pause_sec = speech_pause_sec
+    """Continuously captures audio and emits speech segments."""
+
+    def __init__(
+        self,
+        config: VADConfig = VADConfig(),
+        device_index: Optional[int] = None,
+        on_speech_callback: Optional[Callable[[bytes], None]] = None,
+    ) -> None:
+        self.config = config
+        self.sample_rate = config.sample_rate
+        self.frame_duration_ms = config.frame_duration_ms
+        self.frame_size = int(self.sample_rate * self.frame_duration_ms / 1000)
+        self.padding_frames = max(1, int(config.padding_duration_ms / self.frame_duration_ms))
+        self.activation_count = max(1, int(self.padding_frames * config.activation_ratio))
+        self.deactivation_count = max(1, int(self.padding_frames * config.deactivation_ratio))
+
         self.device_index = device_index
-        self.vad_model = vad_device
         self.on_speech_callback = on_speech_callback
 
-        self.pa = pyaudio.PyAudio()
-        self.stream = None
+        self._vad = webrtcvad.Vad(config.aggressiveness)
+        self._pa = pyaudio.PyAudio()
+        self._stream = None
 
-        # This flag allows us to disable VAD if TTS is playing
-        self.vad_enabled = True
+        self._stop_flag = threading.Event()
+        self._vad_enabled = threading.Event()
+        self._vad_enabled.set()
+        self._frames_to_skip = 0
+        self._reset_buffers = False
 
-        self._stop_flag = False
+    def start(self) -> None:
+        """Start capturing audio and running VAD (blocking)."""
 
-    def start(self):
-        """Start audio capturing in an infinite loop (blocking)."""
-        self.stream = self.pa.open(
+        self._stream = self._pa.open(
             format=pyaudio.paInt16,
             channels=1,
             rate=self.sample_rate,
             input=True,
+            frames_per_buffer=self.frame_size,
             input_device_index=self.device_index,
-            frames_per_buffer=1024
         )
 
-        speech_active = False
-        speech_buffer = []
-        last_speech_time = time.time()
+        ring_buffer: Deque[Frame] = collections.deque(maxlen=self.padding_frames)
+        triggered = False
+        voiced_frames: Deque[bytes] = collections.deque()
 
-        print("-> VAD listening loop started.")
-        while not self._stop_flag:
-            # Read chunk
-            audio_chunk = self.stream.read(self.chunk_size, exception_on_overflow=False)
+        print("-> VAD listening loop started (WebRTC).")
 
-            if not self.vad_enabled:
-                # If VAD is disabled, skip detection
+        frame_interval = self.frame_duration_ms / 1000.0
+
+        while not self._stop_flag.is_set():
+            if not self._vad_enabled.is_set():
+                if self._stream is not None and self._stream.is_active():
+                    self._stream.stop_stream()
+                ring_buffer.clear()
+                voiced_frames.clear()
+                triggered = False
+                time.sleep(frame_interval)
                 continue
 
-            data_np = np.frombuffer(audio_chunk, np.int16).astype(np.float32) / 32768.0
+            if self._stream is not None and not self._stream.is_active():
+                self._stream.start_stream()
 
-            # Detect speech in this chunk
-            speech_ts = get_speech_timestamps(data_np,
-                                              self.vad_model,
-                                              sampling_rate=self.sample_rate,
-                                              return_seconds=False)
-            if len(speech_ts) > 0:
-                # We detected speech
-                speech_buffer.append(audio_chunk)
-                speech_active = True
-                last_speech_time = time.time()
+            frame = self._stream.read(self.frame_size, exception_on_overflow=False)
+
+            if self._reset_buffers:
+                ring_buffer.clear()
+                voiced_frames.clear()
+                triggered = False
+                self._reset_buffers = False
+
+            if self._frames_to_skip > 0:
+                self._frames_to_skip -= 1
+                continue
+
+            is_speech = self._vad.is_speech(frame, self.sample_rate)
+            ring_buffer.append((frame, is_speech))
+
+            if not triggered:
+                if len(ring_buffer) == ring_buffer.maxlen:
+                    num_voiced = sum(1 for _, speech in ring_buffer if speech)
+                    if num_voiced >= self.activation_count:
+                        triggered = True
+                        while ring_buffer:
+                            voiced_frames.append(ring_buffer.popleft()[0])
             else:
-                # no speech in this chunk
-                if speech_active:
-                    if (time.time() - last_speech_time) > self.speech_pause_sec:
-                        # speech ended
-                        print("-> Speech ended, handing off to STT callback.")
-                        all_audio = b''.join(speech_buffer)
-                        speech_buffer.clear()
-                        speech_active = False
+                voiced_frames.append(frame)
+                if len(ring_buffer) == ring_buffer.maxlen:
+                    num_unvoiced = sum(1 for _, speech in ring_buffer if not speech)
+                    if num_unvoiced >= self.deactivation_count:
+                        triggered = False
+                        speech_audio = b"".join(voiced_frames)
+                        voiced_frames.clear()
+                        ring_buffer.clear()
+                        if speech_audio and self.on_speech_callback:
+                            print("-> Speech segment detected ({} bytes).".format(len(speech_audio)))
+                            self.on_speech_callback(speech_audio)
 
-                        # Fire callback
-                        if self.on_speech_callback:
-                            self.on_speech_callback(all_audio)
+        self._stream.stop_stream()
+        self._stream.close()
+        self._pa.terminate()
 
-        # End loop
-        self.stream.stop_stream()
-        self.stream.close()
-        self.pa.terminate()
+    def stop(self) -> None:
+        self._stop_flag.set()
 
-    def stop(self):
-        self._stop_flag = True
+    def enable_vad(self) -> None:
+        skip_frames = max(1, int(0.4 / (self.frame_duration_ms / 1000.0)))
+        self._frames_to_skip = max(skip_frames, self.padding_frames)
+        self._reset_buffers = True
+        if self._stream is not None and not self._stream.is_active():
+            self._stream.start_stream()
+        self._vad_enabled.set()
 
-    def enable_vad(self):
-        self.vad_enabled = True
+    def disable_vad(self) -> None:
+        self._frames_to_skip = 0
+        self._reset_buffers = True
+        self._vad_enabled.clear()
 
-    def disable_vad(self):
-        self.vad_enabled = False
+
+__all__ = ["VADListener", "VADConfig"]
