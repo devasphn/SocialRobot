@@ -1,72 +1,93 @@
-"""Text-to-speech utilities built on top of eSpeak NG."""
+"""Text-to-speech utilities powered by Kokoro-ONNX."""
 
 from __future__ import annotations
 
-import io
-import subprocess
-from typing import Callable, List, Optional
+import hashlib
+import tempfile
+from pathlib import Path
+from typing import Callable, List, Optional, Tuple
 
 import numpy as np
 import pyaudio
-import soundfile as sf
+import requests
+from kokoro_onnx import Kokoro, SAMPLE_RATE
+
+MODEL_URL = "https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.0/kokoro-v1.0.onnx"
+VOICES_URL = "https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.0/voices-v1.0.bin"
+MODEL_SHA256 = "7d5df8ecf7d4b1878015a32686053fd0eebe2bc377234608764cc0ef3636a6c5"
+VOICES_SHA256 = "bca610b8308e8d99f32e6fe4197e7ec01679264efed0cac9140fe9c29f1fbf7d"
+MODEL_FILENAME = "kokoro-v1.0.onnx"
+VOICES_FILENAME = "voices-v1.0.bin"
 
 
-class EspeakTTS:
-    """Generate audio using the `espeak`/`espeak-ng` command line synthesiser."""
+class KokoroTTS:
+    """Generate audio using the Kokoro neural TTS model."""
 
     def __init__(
         self,
-        voice: str = "en-us",
-        rate: int = 180,
-        pitch: int = 50,
-        volume: int = 100,
+        voice: str = "af_bella",
+        speed: float = 1.0,
+        model_dir: Optional[Path | str] = None,
     ) -> None:
         self.voice = voice
-        self.rate = rate
-        self.pitch = pitch
-        self.volume = volume
-        self.sample_rate = 22050  # Will be updated after first synthesis
-        self._binary = self._detect_binary()
-        print(f"-> Using {self._binary} for speech synthesis.")
+        self.speed = speed
+        self.sample_rate = SAMPLE_RATE
+        self._model_dir = Path(model_dir) if model_dir else Path.home() / ".cache" / "kokoro_onnx"
+        self._model_dir.mkdir(parents=True, exist_ok=True)
+        self._model_path = self._model_dir / MODEL_FILENAME
+        self._voices_path = self._model_dir / VOICES_FILENAME
+        self._ensure_model_files()
+        self._engine = Kokoro(str(self._model_path), str(self._voices_path))
+        self._validate_voice()
+        print("-> Using Kokoro-ONNX for speech synthesis.")
+
+    def _ensure_model_files(self) -> None:
+        for url, path, checksum in (
+            (MODEL_URL, self._model_path, MODEL_SHA256),
+            (VOICES_URL, self._voices_path, VOICES_SHA256),
+        ):
+            if not path.exists() or self._sha256(path) != checksum:
+                self._download_with_checksum(url, path, checksum)
 
     @staticmethod
-    def _detect_binary() -> str:
-        for candidate in ("espeak-ng", "espeak"):
-            try:
-                subprocess.run([candidate, "--version"], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-                return candidate
-            except (subprocess.CalledProcessError, FileNotFoundError):
-                continue
-        raise RuntimeError("Neither 'espeak-ng' nor 'espeak' is installed.")
+    def _sha256(path: Path) -> str:
+        hasher = hashlib.sha256()
+        with path.open("rb") as fp:
+            for chunk in iter(lambda: fp.read(1024 * 1024), b""):
+                hasher.update(chunk)
+        return hasher.hexdigest()
+
+    def _download_with_checksum(self, url: str, destination: Path, expected_sha256: str) -> None:
+        response = requests.get(url, stream=True, timeout=60)
+        response.raise_for_status()
+
+        with tempfile.NamedTemporaryFile(delete=False, dir=str(destination.parent)) as tmp_file:
+            for chunk in response.iter_content(chunk_size=1024 * 1024):
+                if chunk:
+                    tmp_file.write(chunk)
+            tmp_path = Path(tmp_file.name)
+
+        actual_sha256 = self._sha256(tmp_path)
+        if actual_sha256 != expected_sha256:
+            tmp_path.unlink(missing_ok=True)
+            raise RuntimeError(
+                f"Checksum mismatch for {destination.name}: expected {expected_sha256}, got {actual_sha256}"
+            )
+
+        tmp_path.replace(destination)
+
+    def _validate_voice(self) -> None:
+        available = self._engine.get_voices()
+        if self.voice not in available:
+            raise ValueError(f"Voice '{self.voice}' is not available. Choose from: {', '.join(available)}")
 
     def synthesize(self, text: str) -> np.ndarray:
-        if not text:
+        if not text.strip():
             return np.zeros(0, dtype=np.float32)
 
-        cmd = [
-            self._binary,
-            "-v",
-            self.voice,
-            "-s",
-            str(self.rate),
-            "-p",
-            str(self.pitch),
-            "-a",
-            str(self.volume),
-            "--stdout",
-            text,
-        ]
-
-        result = subprocess.run(cmd, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        audio_bytes = result.stdout
-        if not audio_bytes:
-            return np.zeros(0, dtype=np.float32)
-
-        audio, sr = sf.read(io.BytesIO(audio_bytes), dtype="float32")
-        if audio.ndim > 1:
-            audio = audio[:, 0]
-        self.sample_rate = sr
-        return audio
+        audio, sample_rate = self._engine.create(text, voice=self.voice, speed=self.speed)
+        self.sample_rate = sample_rate
+        return audio.astype(np.float32, copy=False)
 
     def _chunk_audio(self, audio_data: np.ndarray, chunk_size: int) -> List[np.ndarray]:
         return [audio_data[i : i + chunk_size] for i in range(0, len(audio_data), chunk_size)]
@@ -82,7 +103,7 @@ class EspeakTTS:
                 amplitude_callback(0.0)
             return
 
-        audio_float = audio_data.astype(np.float32)
+        audio_float = audio_data.astype(np.float32, copy=False)
         chunk_size = max(1, int(self.sample_rate * chunk_duration))
         chunks = self._chunk_audio(audio_float, chunk_size)
         if not chunks:
@@ -102,20 +123,23 @@ class EspeakTTS:
             output=True,
         )
 
-        cursor = 0
-        for chunk, level in zip(chunks, normalized_levels):
-            frames = audio_int16[cursor : cursor + len(chunk)]
-            stream.write(frames.tobytes())
-            cursor += len(chunk)
+        try:
+            cursor = 0
+            for chunk, level in zip(chunks, normalized_levels):
+                frames = audio_int16[cursor : cursor + len(chunk)]
+                stream.write(frames.tobytes())
+                cursor += len(chunk)
+                if amplitude_callback:
+                    amplitude_callback(level)
+        finally:
             if amplitude_callback:
-                amplitude_callback(level)
+                amplitude_callback(0.0)
+            stream.stop_stream()
+            stream.close()
+            pa.terminate()
 
-        if amplitude_callback:
-            amplitude_callback(0.0)
-
-        stream.stop_stream()
-        stream.close()
-        pa.terminate()
+    def available_voices(self) -> Tuple[str, ...]:
+        return tuple(self._engine.get_voices())
 
 
-__all__ = ["EspeakTTS"]
+__all__ = ["KokoroTTS"]
