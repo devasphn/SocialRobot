@@ -141,6 +141,8 @@ class VADListener:
     def disable_vad(self) -> None:
         self._frames_to_skip = 0
         self._reset_buffers = True
+        if self._stream is not None and self._stream.is_active():
+            self._stream.stop_stream()
         self._vad_enabled.clear()
 
 
