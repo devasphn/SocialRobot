@@ -6,7 +6,7 @@ import threading
 from typing import Optional
 
 from audio.stt import FasterWhisperSTT
-from audio.tts import EspeakTTS
+from audio.tts import KokoroTTS
 from audio.vad import VADConfig, VADListener
 from face_animation.face import FaceAnimator, FaceSettings
 from llm.ollama import OllamaClient
@@ -43,7 +43,7 @@ def main() -> None:
         system_prompt="You are a cheerful robotic companion speaking concisely.",
     )
 
-    tts_model = EspeakTTS(voice="en-us", rate=185, pitch=55)
+    tts_model = KokoroTTS(voice="af_bella", speed=1.0)
 
     vad_listener: Optional[VADListener] = None
     last_bot_response: str = ""
