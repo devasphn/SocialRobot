@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import tempfile
+import time
 from pathlib import Path
 from typing import Callable, List, Optional, Tuple
 
@@ -116,16 +117,18 @@ class KokoroTTS:
         audio_int16 = np.clip(audio_float * 32767.0, -32768, 32767).astype(np.int16)
 
         pa = pyaudio.PyAudio()
-        stream = pa.open(
-            format=pyaudio.paInt16,
-            channels=1,
-            rate=self.sample_rate,
-            output=True,
-            frames_per_buffer=4096, # sounds like a tincan POS without this - experiment with lower value to crap sound thresh
-
-        )
+        stream = None
 
         try:
+            stream = pa.open(
+                format=pyaudio.paInt16,
+                channels=1,
+                rate=self.sample_rate,
+                output=True,
+                frames_per_buffer=4096, # sounds like a tincan POS without this - experiment with lower value to crap sound thresh
+
+            )
+
             cursor = 0
             for chunk, level in zip(chunks, normalized_levels):
                 frames = audio_int16[cursor : cursor + len(chunk)]
@@ -134,10 +137,26 @@ class KokoroTTS:
                 if amplitude_callback:
                     amplitude_callback(level)
         finally:
-            if amplitude_callback:
+            if stream is not None:
+                try:
+                    output_latency = stream.get_output_latency()
+                except Exception:
+                    output_latency = 0.0
+
+                drain_wait = (
+                    max(output_latency, chunk_duration)
+                    if output_latency and output_latency > 0
+                    else chunk_duration
+                )
+                if drain_wait and drain_wait > 0:
+                    time.sleep(drain_wait)
+
+                if amplitude_callback:
+                    amplitude_callback(0.0)
+                stream.stop_stream()
+                stream.close()
+            elif amplitude_callback:
                 amplitude_callback(0.0)
-            stream.stop_stream()
-            stream.close()
             pa.terminate()
 
     def available_voices(self) -> Tuple[str, ...]:
