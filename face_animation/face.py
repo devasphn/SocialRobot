@@ -21,11 +21,11 @@ class FaceSettings:
     background_color: Tuple[int, int, int] = (8, 10, 26)
     face_image_path: str = "face.png"
     mouth_image_path: str = "mouth.png"
-    face_offset: Tuple[int, int] = (-300, 100)
+    face_offset: Tuple[int, int] = (-150, 0)
     face_scale: float = 0.8
     face_image_rotation: float = 180.0
-    mouth_anchor: Tuple[float, float] = (0.5, 0.68)
-    mouth_base_scale: Tuple[float, float] = (1.0, 1.0)
+    mouth_anchor: Tuple[float, float] = (0.28, 0.5)
+    mouth_base_scale: Tuple[float, float] = (1.5, 1.5)
     mouth_min_scale: float = 0.6
     mouth_max_scale: float = 1.35
     breath_amplitude: float = 6.0
