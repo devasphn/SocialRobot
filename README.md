@@ -7,13 +7,12 @@ This project wires together three real-time components on the Jetson Orin Nano: 
 ```bash
 sudo apt update
 sudo apt install -y git curl python3-venv python3-dev build-essential \
-    libportaudio2 portaudio19-dev libasound-dev libsndfile1 \
-    libsdl2-dev libsdl2-image-dev libsdl2-mixer-dev libsdl2-ttf-dev \
-    libfreetype6-dev libjpeg-dev libpng-dev
+    libportaudio2 portaudio19-dev libasound-dev \
+    libsdl2-dev libsdl2-image-dev libpng-dev
 ```
 - `pyaudio` (microphone I/O) depends on PortAudio/ALSA headers and libs.
 - `webrtcvad` and `pygame` expect development headers to build on aarch64.
-- `soundfile` needs `libsndfile1` for playback; `pygame` uses SDL2/FreeType/JPEG/PNG for rendering.
+- `pygame` uses SDL2 and libpng for rendering; install SDL mixer/TTF and image codecs only if your project needs them.
 
 If you plan to display over HDMI while logged in via SSH, also enable an X server on the Jetson desktop (`DISPLAY=:0` later).
 
