@@ -121,6 +121,8 @@ class KokoroTTS:
             channels=1,
             rate=self.sample_rate,
             output=True,
+            frames_per_buffer=4096, # sounds like a tincan POS without this - experiment with lower value to crap sound thresh
+
         )
 
         try:
