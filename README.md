@@ -18,9 +18,7 @@ If you plan to display over HDMI while logged in via SSH, also enable an X serve
 
 ## 2. Clone the repository
 ```bash
-mkdir -p ~/robot
-cd ~/robot
-git clone https://<your_repo_host>/RoboTest.git
+git clone https://github.com/OminousIndustries/RoboTest.git
 cd RoboTest
 ```
 
@@ -28,7 +26,6 @@ cd RoboTest
 ```bash
 python3 -m venv ~/robot/.venv
 source ~/robot/.venv/bin/activate
-python -m pip install --upgrade pip wheel
 python -m pip install -r requirements.txt
 ```
 Requirements pull Faster-Whisper, Kokoro-ONNX, PyAudio, pygame, WebRTC-VAD, etc.
@@ -41,9 +38,7 @@ Place `face.png` and `mouth.png` (transparent PNGs sized for your display) in th
 ## 5. Install and prepare Ollama
 ```bash
 curl -fsSL https://ollama.com/install.sh | sh
-# either reboot or start the service manually after install:
-sudo systemctl enable --now ollama
-ollama run gemma3:270m   # downloads/warm-starts the model
+ollama run gemma3:270m   # downloads the gemma3 270m model
 ```
 The app expects to reach `http://localhost:11434/api/chat` with the `gemma3:270m` model in streaming mode.
 
@@ -51,14 +46,19 @@ Keep the Ollama service running in the background (`ollama serve` if you are not
 
 ## 6. Hardware checks
 1. Plug in a USB microphone and speakers/headphones.
-2. Verify the devices:
-   ```bash
-   arecord -l   # list capture devices
-   aplay -l     # list playback devices
-   ```
-3. Adjust ALSA mixer levels (`alsamixer`) so the WebRTC VAD sees audio above its thresholds.
-
-If you need to target a non-default microphone, set `device_index` when creating `VADListener` (edit `main.py`).
+2. In the system settings application, set the microphone and the speaker to the default values for sound input and output.
+3. If you install the Jetson in the Robot, you will have to ensure the sound output is still set to HDMI, since this will be difficult to do while installed in the robot, you can do it through ssh like this:
+```bash
+# List the available audio outputs
+pactl list short sinks
+# This command will give you a list of your available audio outputs (sinks). The output will look something like this:
+0	alsa_output.platform-sound.analog-stereo	module-alsa-card.c	s16le 2ch 44100Hz	SUSPENDED
+1	alsa_output.platform-3510000.hda.hdmi-stereo	module-alsa-card.c	s16le 2ch 44100Hz	SUSPENDED
+# From the list, you need to find the device that corresponds to your HDMI output. Look for a name that includes "hdmi". In the example above, the HDMI output is the second one.
+# You will need this full name for the next step. You can copy it directly from your terminal.
+pactl set-default-sink your_hdmi_device_name
+# This wont persist after a reboot unless you edit the  PulseAudio configuration file.
+```
 
 ## 7. Running the application
 ```bash
