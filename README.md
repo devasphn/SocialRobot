@@ -18,7 +18,7 @@ If you plan to display over HDMI while logged in via SSH, also enable an X serve
 
 ## 2. Clone the repository
 ```bash
-git clone https://github.com/OminousIndustries/RoboTest.git
+git clone https://github.com/OminousIndustries/SocialRobot.git
 cd RoboTest
 ```
 
