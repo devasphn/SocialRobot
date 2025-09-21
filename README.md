@@ -9,11 +9,75 @@ The Social Robot project combines a 3D-printed chassis, off-the-shelf electronic
 - **Compute & audio**: An NVIDIA Jetson Orin Nano Super Developer Kit drives the voice, speech recognition, and projection experience.
 - **Software**: WebRTC-based voice activity detection, Faster-Whisper speech recognition, Kokoro-ONNX text-to-speech, and a pygame-driven face animation loop communicating with an Ollama-hosted LLM.
 
-## Quick Links
+> **Availability & Kits (Important)**  
+> Social Robot is free to make and print for personal use. For convenience, a limited number of pre-printed kits (including all parts **except** the Jetson) are available here: [ominousindustries.com](https://ominousindustries.com).
+
+### Quick Links
 - 📺 [Full robot build instruction video](https://vimeo.com/1120539378/5c16415a2a)
 - 🎛️ [Optional Arduino head-movement video](https://vimeo.com/1120544089)
 
 ![Exploded view placeholder](images/exploded-view-placeholder.jpg)
+
+## Software Setup
+
+### 1. OS Prerequisites (Jetson)
+Install system packages once per Jetson Orin Nano to support audio, SDL, and build tooling:
+```bash
+sudo apt update
+sudo apt install -y git curl python3-venv python3-dev build-essential \
+    libportaudio2 portaudio19-dev libasound-dev \
+    libsdl2-dev libsdl2-image-dev libpng-dev
+```
+- `pyaudio` depends on PortAudio/ALSA headers and libraries.
+- `webrtcvad` and `pygame` require development headers on aarch64.
+- `pygame` uses SDL2 and libpng for rendering; add SDL mixer/TTF and image codecs if needed.
+
+If you plan to display over HDMI while logged in via SSH, start an X server on the Jetson desktop (`DISPLAY=:0` later).
+
+### 2. Clone the Repository
+```bash
+git clone https://github.com/OminousIndustries/SocialRobot.git
+cd SocialRobot
+```
+
+### 3. Create the Python Environment
+```bash
+python3 -m venv ~/robot/.venv
+source ~/robot/.venv/bin/activate
+python -m pip install -r requirements.txt
+```
+The first run downloads the Faster-Whisper `tiny.en` model and Kokoro ONNX/voice files into `~/.cache/kokoro_onnx`.
+
+### 4. Provide Face Assets
+Place `face.png` and `mouth.png` (transparent PNGs sized for your display) in the repository root, or update `FaceSettings.face_image_path` and `mouth_image_path` in `main.py`.
+
+### 5. Install & Prepare Ollama
+```bash
+curl -fsSL https://ollama.com/install.sh | sh
+ollama run gemma3:270m   # downloads the gemma3 270m model
+```
+The application reaches `http://localhost:11434/api/chat` and expects the `gemma3:270m` model in streaming mode. Keep the Ollama service running in the background (`ollama serve` if systemd is unavailable).
+
+### 6. Configure Audio Devices
+1. Connect a USB microphone and speakers/headphones.
+2. Set default input/output devices via the desktop sound settings.
+3. When operating headless, adjust PulseAudio defaults over SSH:
+```bash
+pactl list short sinks       # identify HDMI or other outputs
+pactl set-default-sink <sink_name>
+
+pactl list short sources     # identify microphone input
+pactl set-default-source <source_name>
+```
+PulseAudio settings reset on reboot unless persisted via configuration files.
+
+### 7. Run the Application
+```bash
+# inside the venv and repository root
+export DISPLAY=:0        # required when launching over SSH
+python main.py
+```
+The face renderer runs in a dedicated thread, while the VAD loop waits for speech. Whisper falls back to CPU if CUDA is unavailable; otherwise, ctranslate2 leverages GPU acceleration.
 
 ## Bill of Materials
 
@@ -101,82 +165,21 @@ Use the following checklist to track prints. Notes indicate parts that benefit f
 ## Mechanical Assembly Overview
 Follow along with the [build instruction video](https://vimeo.com/1120539378/5c16415a2a) for step-by-step visuals. Use the checklist below as a high-level roadmap.
 
-1. **Base & Mobility** — Assemble the base components, gear rail, and rail slider. Verify smooth motion before proceeding.  
+1. **Base & Mobility** — Assemble the base components, gear rail, and rail slider. Verify smooth motion before proceeding.
    ![Base assembly placeholder](images/base-assembly-placeholder.jpg)
-2. **Mounting Electronics** — Install the Jetson, projector clamps, and cable routing, keeping HDMI adapters accessible.  
+2. **Mounting Electronics** — Install the Jetson, projector clamps, and cable routing, keeping HDMI adapters accessible.
    ![Electronics installation placeholder](images/electronics-installation-placeholder.jpg)
-3. **Head Frame & Mirrors** — Build the head frame, attach mirrors with protective film removed, and install the translucent PET face screen.  
+3. **Head Frame & Mirrors** — Build the head frame, attach mirrors with protective film removed, and install the translucent PET face screen.
    ![Head frame placeholder](images/head-frame-placeholder.jpg)
 4. **Final Touches** — Fit the printed feet, tidy wiring, and confirm projector alignment.
 
 ### Optional Head Movement System
 If you plan to add head motion, watch the [Arduino instruction video](https://vimeo.com/1120544089) and install:
-1. Arduino Uno and stepper driver on the dedicated mounts.  
+1. Arduino Uno and stepper driver on the dedicated mounts.
    ![Arduino mount placeholder](images/arduino-mount-placeholder.jpg)
-2. LM393 sound sensors with optional 4 mm spacers to improve angle.  
+2. LM393 sound sensors with optional 4 mm spacers to improve angle.
    ![Sensor placement placeholder](images/sensor-placement-placeholder.jpg)
 3. Wire the components following the video guide, then upload your motion sketch.
-
-## Software Setup
-
-### 1. OS Prerequisites (Jetson)
-Install system packages once per Jetson Orin Nano to support audio, SDL, and build tooling:
-```bash
-sudo apt update
-sudo apt install -y git curl python3-venv python3-dev build-essential \
-    libportaudio2 portaudio19-dev libasound-dev \
-    libsdl2-dev libsdl2-image-dev libpng-dev
-```
-- `pyaudio` depends on PortAudio/ALSA headers and libraries.
-- `webrtcvad` and `pygame` require development headers on aarch64.
-- `pygame` uses SDL2 and libpng for rendering; add SDL mixer/TTF and image codecs if needed.
-
-If you plan to display over HDMI while logged in via SSH, start an X server on the Jetson desktop (`DISPLAY=:0` later).
-
-### 2. Clone the Repository
-```bash
-git clone https://github.com/OminousIndustries/SocialRobot.git
-cd SocialRobot
-```
-
-### 3. Create the Python Environment
-```bash
-python3 -m venv ~/robot/.venv
-source ~/robot/.venv/bin/activate
-python -m pip install -r requirements.txt
-```
-The first run downloads the Faster-Whisper `tiny.en` model and Kokoro ONNX/voice files into `~/.cache/kokoro_onnx`.
-
-### 4. Provide Face Assets
-Place `face.png` and `mouth.png` (transparent PNGs sized for your display) in the repository root, or update `FaceSettings.face_image_path` and `mouth_image_path` in `main.py`.
-
-### 5. Install & Prepare Ollama
-```bash
-curl -fsSL https://ollama.com/install.sh | sh
-ollama run gemma3:270m   # downloads the gemma3 270m model
-```
-The application reaches `http://localhost:11434/api/chat` and expects the `gemma3:270m` model in streaming mode. Keep the Ollama service running in the background (`ollama serve` if systemd is unavailable).
-
-### 6. Configure Audio Devices
-1. Connect a USB microphone and speakers/headphones.
-2. Set default input/output devices via the desktop sound settings.
-3. When operating headless, adjust PulseAudio defaults over SSH:
-```bash
-pactl list short sinks       # identify HDMI or other outputs
-pactl set-default-sink <sink_name>
-
-pactl list short sources     # identify microphone input
-pactl set-default-source <source_name>
-```
-PulseAudio settings reset on reboot unless persisted via configuration files.
-
-### 7. Run the Application
-```bash
-# inside the venv and repository root
-export DISPLAY=:0        # required when launching over SSH
-python main.py
-```
-The face renderer runs in a dedicated thread, while the VAD loop waits for speech. Whisper falls back to CPU if CUDA is unavailable; otherwise, ctranslate2 leverages GPU acceleration.
 
 ## Runtime Expectations & Troubleshooting
 - First launch may take several minutes while models download (Faster-Whisper, Kokoro assets, Ollama LLM).
@@ -191,4 +194,3 @@ The face renderer runs in a dedicated thread, while the VAD loop waits for speec
 - No extra CUDA/cuDNN setup is required beyond JetPack defaults; the application runs in CPU-only mode if necessary.
 
 ![Completed robot placeholder](images/completed-robot-placeholder.jpg)
-
