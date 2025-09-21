@@ -24,7 +24,10 @@ class FaceSettings:
     face_offset: Tuple[int, int] = (-150, 0)
     face_scale: float = 0.8
     face_image_rotation: float = 180.0
-    mouth_anchor: Tuple[float, float] = (0.28, 0.5)
+    # Uncomment for Desktop (Uncommented by default)
+    mouth_anchor: Tuple[float, float] = (0.5, 0.28)
+    # Uncomment for Robot
+    #mouth_anchor: Tuple[float, float] = (0.28, 0.5)
     mouth_base_scale: Tuple[float, float] = (1.5, 1.5)
     mouth_min_scale: float = 0.6
     mouth_max_scale: float = 1.35
