@@ -106,61 +106,15 @@ The face renderer runs in a dedicated thread, while the VAD loop waits for speec
 
 ![Electronics layout placeholder](images/electronics-layout-placeholder.jpg)
 
-## 3D Printing Preparation
+## 3D Printed Parts
 
-### Printer Requirements
-- **Build volume**: Minimum 256 mm × 256 mm × 256 mm.
-- **Material**: No special filament required—choose your preferred PLA/PETG.
+All print files are available here:  
+**Printables:** <https://www.printables.com/model/1420907-ominous-industries-social-robot>
 
-### Recommended Print Settings
-- Layer height: 0.20 mm (use finer layers on gears/sliders for smoother motion).
-- Infill: 20 % baseline (increase for structural components noted below).
-- Supports: Not required unless called out.
-- Orientation: All STL files are pre-oriented for printing.
+A **limited number of pre‑printed kits** (Not Including the Jetson) are available here **[ominousindustries.com](https://ominousindustries.com/collections/robots/products/bob-the-sentient-washing-machine-parts-kit-no-pi-included)**.
 
-### Part Checklist by Folder
-Use the following checklist to track prints. Notes indicate parts that benefit from finer resolution, higher infill, or support material.
+---
 
-#### Base
-- Base_Plate
-- Gear_Rail — finer layer height recommended for smooth motion
-- Motor_Mount
-- Rail_Slider — finer layer height recommended for smooth motion
-- Rear_Base_Mount
-- Robo_Base
-- Robo_Foot — print four copies
-- Ten_Tooth_Gear — print with very fine settings and small layer height
-
-#### Clamps
-- Rear_Projector_Clamp
-- Side_Projector_Clamp — print two copies
-- Top_Projector_Clamp
-
-#### Head Frame
-- Face_Bezel — increase infill for strength
-- Front_Crossmember
-- Head_Frame — print two copies; increase infill for strength
-- Rear_Crossmember
-
-#### Mirrors
-- Rear_Mirror_Bezel
-- Rear_Mirror_Bridge
-- Rear_Mirror_Support
-- Top_Mirror_Bezel
-- Top_Mirror_Bridge
-
-#### Mounts
-- Front_Post_Mount
-- Side_Post_Mount — print two copies
-
-#### Posts
-- Arduino_Mount
-- Arduino_Side_Post
-- Front_Post
-- Jetson_Side_Post — requires supports
-- Jetson_Clip — print three copies
-
-![Print layout placeholder](images/print-layout-placeholder.jpg)
 
 ## Mechanical Assembly Overview
 Follow along with the [build instruction video](https://vimeo.com/1120539378/5c16415a2a) for step-by-step visuals. 
