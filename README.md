@@ -78,10 +78,20 @@ python main.py
 ```
 The face renderer starts in its own thread, then the VAD loop blocks waiting for speech. Whisper automatically falls back to CPU if CUDA is unavailable; if ctranslate2 detects a CUDA device on the Jetson, it uses it for STT acceleration.
 
+
+
 ## 8. Runtime expectations & troubleshooting
 - First launch may take a few minutes while models download (`faster-whisper`, Kokoro assets, and the Ollama LLM).
 - If `pyaudio` reports missing devices, confirm PulseAudio/ALSA sees your hardware, or run the script as the desktop user instead of root to access sound.
 - To tweak face orientation or screen resolution, adjust `FaceSettings` in `main.py` (window size, rotation, offsets).
 - To switch voices or playback rate, pass different parameters when constructing `KokoroTTS`. Available voices can be listed via `KokoroTTS().available_voices()`.
+- If the software update popup is blocking the projected image, run 
+# If the Ubuntu update screen overlay is blocking the display, do the following:
+```bash
+pgrep -af update # This will locate the process for the update window
+# Once the process is shown, note its PID # and then use:
+kill <PID>
+# Once this is done the update popup will go away and not interfere with the projected image.
+```
 
 No additional steps are required beyond the apt packages above unless your JetPack installation lacks CUDA/cuDNN updates; the script already tolerates CPU-only inference.
