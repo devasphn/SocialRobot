@@ -10,7 +10,7 @@ The Social Robot project combines a 3D-printed chassis, off-the-shelf electronic
 - **Software**: WebRTC-based voice activity detection, Faster-Whisper speech recognition, Kokoro-ONNX text-to-speech, and a pygame-driven face animation loop communicating with an Ollama-hosted LLM.
 
 > **Availability & Kits (Important)**  
-> Social Robot is free to make and print for personal use. For convenience, a limited number of pre-printed kits (including all parts **except** the Jetson) are available here: [ominousindustries.com](https://ominousindustries.com).
+> Social Robot is free to make and print for personal use. For convenience, a limited number of pre-printed kits (including all parts **except** the Jetson) are available here: [ominousindustries.com](ominousindustries.com/products/ai-social-robot-kit-compatible-with-nvidia-jetson-orin-nano-super-jetson-not-included).
 
 ### Quick Links
 - 📺 [Full robot build instruction video](https://vimeo.com/1120539378/5c16415a2a)
@@ -111,7 +111,7 @@ The face renderer runs in a dedicated thread, while the VAD loop waits for speec
 All print files are available here:  
 **Printables:** <https://www.printables.com/model/1420907-ominous-industries-social-robot>
 
-A **limited number of pre‑printed kits** (Not Including the Jetson) are available here **[ominousindustries.com](https://ominousindustries.com/collections/robots/products/bob-the-sentient-washing-machine-parts-kit-no-pi-included)**.
+A **limited number of pre‑printed kits** (Not Including the Jetson) are available here **[ominousindustries.com](ominousindustries.com/products/ai-social-robot-kit-compatible-with-nvidia-jetson-orin-nano-super-jetson-not-included)**.
 
 ---
 
