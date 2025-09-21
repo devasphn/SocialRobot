@@ -9,12 +9,13 @@ The Social Robot project combines a 3D-printed chassis, off-the-shelf electronic
 - **Compute & audio**: An NVIDIA Jetson Orin Nano Super Developer Kit drives the voice, speech recognition, and projection experience.
 - **Software**: WebRTC-based voice activity detection, Faster-Whisper speech recognition, Kokoro-ONNX text-to-speech, and a pygame-driven face animation loop communicating with an Ollama-hosted LLM.
 
-> **Availability & Kits (Important)**  
-> Social Robot is free to make and print for personal use. For convenience, a limited number of pre-printed kits (including all parts **except** the Jetson) are available here: [ominousindustries.com](ominousindustries.com/products/ai-social-robot-kit-compatible-with-nvidia-jetson-orin-nano-super-jetson-not-included).
+> [!IMPORTANT]
+> **Availability & Kits** > Social Robot is free to make and print for personal use. For convenience, a limited number of pre-printed kits (including all parts **except** the Jetson) are available here: [ominousindustries.com](https://ominousindustries.com/products/ai-social-robot-kit-compatible-with-nvidia-jetson-orin-nano-super-jetson-not-included).
 
 ### Quick Links
-- 📺 [Full robot build instruction video](https://vimeo.com/1120539378/5c16415a2a)
-- 🎛️ [Optional Arduino head-movement video](https://vimeo.com/1120544089)
+- <h3>📺 <a href="https://vimeo.com/1120539378/5c16415a2a">Full robot build instruction video</a></h3>
+- <h3>📺 <a href="https://youtu.be/0hvnBBC9HRI">Bijan Bowen YouTube Video On Robot & Software setup tutorial</a></h3>
+- <h3>🎛️ <a href="https://vimeo.com/1120544089">Optional Arduino head-movement video</a></h3>
 
 ![Exploded view placeholder](images/exploded-view-placeholder.jpg)
 
@@ -114,7 +115,6 @@ All print files are available here:
 A **limited number of pre‑printed kits** (Not Including the Jetson) are available here **[ominousindustries.com](ominousindustries.com/products/ai-social-robot-kit-compatible-with-nvidia-jetson-orin-nano-super-jetson-not-included)**.
 
 ---
-
 
 ## Mechanical Assembly Overview
 Follow along with the **[Build instruction video](https://vimeo.com/1120539378/5c16415a2a)** for step-by-step visuals. 
