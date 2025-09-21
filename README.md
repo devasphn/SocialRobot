@@ -117,10 +117,10 @@ A **limited number of pre‑printed kits** (Not Including the Jetson) are availa
 
 
 ## Mechanical Assembly Overview
-Follow along with the [build instruction video](https://vimeo.com/1120539378/5c16415a2a) for step-by-step visuals. 
+Follow along with the **[Build instruction video](https://vimeo.com/1120539378/5c16415a2a)** for step-by-step visuals. 
 
 ### Optional Head Movement System
-If you plan to add head motion, watch the [Arduino instruction video](https://vimeo.com/1120544089)
+If you plan to add head motion, watch the **[Arduino instruction video](https://vimeo.com/1120544089)**
 
 ## Runtime Expectations & Troubleshooting
 - First launch may take several minutes while models download (Faster-Whisper, Kokoro assets, Ollama LLM).
@@ -132,6 +132,6 @@ If you plan to add head motion, watch the [Arduino instruction video](https://vi
   pgrep -af update
   kill <PID>
   ```
-- No extra CUDA/cuDNN setup is required beyond JetPack defaults; the application runs in CPU-only mode if necessary.
+- If you are unable to get Chromium to launch on the Jetson/Jetpack 6.2, see these instructions: [Chromium Jetson Fix](https://forums.developer.nvidia.com/t/chromium-other-browsers-not-working-after-flashing-or-updating-heres-why-and-quick-fix/338891)
 
 ![Completed robot placeholder](images/completed-robot-placeholder.jpg)
