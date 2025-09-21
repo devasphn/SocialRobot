@@ -50,7 +50,7 @@ python -m pip install -r requirements.txt
 The first run downloads the Faster-Whisper `tiny.en` model and Kokoro ONNX/voice files into `~/.cache/kokoro_onnx`.
 
 ### 4. Provide Face Assets
-Place `face.png` and `mouth.png` (transparent PNGs sized for your display) in the repository root, or update `FaceSettings.face_image_path` and `mouth_image_path` in `main.py`.
+Place `face.png` and `mouth.png` (transparent PNGs sized for your display) in the repository root, or update `FaceSettings.face_image_path` and `mouth_image_path` in `main.py`. There are some default ones included here for both the Robot and non Robot use cases. 
 
 ### 5. Install & Prepare Ollama
 ```bash
@@ -112,7 +112,7 @@ The face renderer runs in a dedicated thread, while the VAD loop waits for speec
 All print files are available here:  
 **Printables:** <https://www.printables.com/model/1420907-ominous-industries-social-robot>
 
-A **limited number of pre‑printed kits** (Not Including the Jetson) are available here **[ominousindustries.com](ominousindustries.com/products/ai-social-robot-kit-compatible-with-nvidia-jetson-orin-nano-super-jetson-not-included)**.
+A **limited number of pre‑printed kits** (Not Including the Jetson) are available here [ominousindustries.com](https://ominousindustries.com/products/ai-social-robot-kit-compatible-with-nvidia-jetson-orin-nano-super-jetson-not-included).
 
 ---
 
