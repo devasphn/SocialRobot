@@ -163,23 +163,10 @@ Use the following checklist to track prints. Notes indicate parts that benefit f
 ![Print layout placeholder](images/print-layout-placeholder.jpg)
 
 ## Mechanical Assembly Overview
-Follow along with the [build instruction video](https://vimeo.com/1120539378/5c16415a2a) for step-by-step visuals. Use the checklist below as a high-level roadmap.
-
-1. **Base & Mobility** — Assemble the base components, gear rail, and rail slider. Verify smooth motion before proceeding.
-   ![Base assembly placeholder](images/base-assembly-placeholder.jpg)
-2. **Mounting Electronics** — Install the Jetson, projector clamps, and cable routing, keeping HDMI adapters accessible.
-   ![Electronics installation placeholder](images/electronics-installation-placeholder.jpg)
-3. **Head Frame & Mirrors** — Build the head frame, attach mirrors with protective film removed, and install the translucent PET face screen.
-   ![Head frame placeholder](images/head-frame-placeholder.jpg)
-4. **Final Touches** — Fit the printed feet, tidy wiring, and confirm projector alignment.
+Follow along with the [build instruction video](https://vimeo.com/1120539378/5c16415a2a) for step-by-step visuals. 
 
 ### Optional Head Movement System
-If you plan to add head motion, watch the [Arduino instruction video](https://vimeo.com/1120544089) and install:
-1. Arduino Uno and stepper driver on the dedicated mounts.
-   ![Arduino mount placeholder](images/arduino-mount-placeholder.jpg)
-2. LM393 sound sensors with optional 4 mm spacers to improve angle.
-   ![Sensor placement placeholder](images/sensor-placement-placeholder.jpg)
-3. Wire the components following the video guide, then upload your motion sketch.
+If you plan to add head motion, watch the [Arduino instruction video](https://vimeo.com/1120544089)
 
 ## Runtime Expectations & Troubleshooting
 - First launch may take several minutes while models download (Faster-Whisper, Kokoro assets, Ollama LLM).
