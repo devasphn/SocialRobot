@@ -51,12 +51,22 @@ Keep the Ollama service running in the background (`ollama serve` if you are not
 ```bash
 # List the available audio outputs
 pactl list short sinks
+
 # This command will give you a list of your available audio outputs (sinks). The output will look something like this:
 0	alsa_output.platform-sound.analog-stereo	module-alsa-card.c	s16le 2ch 44100Hz	SUSPENDED
 1	alsa_output.platform-3510000.hda.hdmi-stereo	module-alsa-card.c	s16le 2ch 44100Hz	SUSPENDED
+
 # From the list, you need to find the device that corresponds to your HDMI output. Look for a name that includes "hdmi". In the example above, the HDMI output is the second one.
+
 # You will need this full name for the next step. You can copy it directly from your terminal.
 pactl set-default-sink your_hdmi_device_name
+
+# To find the microphone source name, run the following:
+pactl list short sources
+
+# When you see the microphone name displayed, set it as the default device: 
+pactl set-default-source your_input_device_name
+
 # This wont persist after a reboot unless you edit the  PulseAudio configuration file.
 ```
 
