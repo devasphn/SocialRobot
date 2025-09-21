@@ -1,0 +1,16 @@
+# Streamlined Speech-to-Speech AI Pipeline Requirements
+# Only essential dependencies for STT-LLM-TTS functionality
+
+# Speech-to-Text (STT)
+faster-whisper==1.0.3
+numpy==2.2.1
+
+# Text-to-Speech (TTS)
+kokoro-onnx==0.4.9
+
+# Audio Processing
+PyAudio==0.2.14
+webrtcvad==2.0.10
+
+# HTTP requests for LLM API calls
+requests==2.32.3
